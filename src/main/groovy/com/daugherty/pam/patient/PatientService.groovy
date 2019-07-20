@@ -24,7 +24,7 @@ class PatientService {
   void sync(List<Patient> patients) {
     patients.each {
       def optionalPatient = patientRepository.findById(it.id)
-      if (!optionalPatientisPresent()) patientRepository.save(it)
+      if (!optionalPatient.isPresent()) patientRepository.save(it)
     }
   }
 

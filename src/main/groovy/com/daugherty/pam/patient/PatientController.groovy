@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RestController
 
 @Slf4j
-@RestController()
+@RestController
 class PatientController {
   private final PatientService patientService
   private final NotificationService notificationService
