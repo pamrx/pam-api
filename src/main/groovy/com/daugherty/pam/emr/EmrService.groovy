@@ -6,6 +6,7 @@ import com.daugherty.pam.patient.PatientService
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
+import org.springframework.http.ResponseEntity
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
@@ -17,7 +18,7 @@ class EmrService {
   private final RestTemplate restTemplate
   private final PatientService patientService
   private final MedicationService medicationService
-  private String emrToken
+  private ResponseEntity<LinkedHashMap<String, String>> emrToken
 
   EmrService(final RestTemplate restTemplate, final PatientService patientService, final MedicationService medicationService) {
     this.restTemplate = restTemplate
@@ -26,28 +27,22 @@ class EmrService {
   }
 
   @PostConstruct
-  @Scheduled(fixedRateString = '3600')
+  @Scheduled(fixedRateString = '360000')
   void getEmrToken() {
-    emrToken = restTemplate.postForEntity(
-        'http://159.65.225.138/apis/api/auth',
-        {
-          grant_type = "password"
-          username = "admin"
-          password = "pamrx"
-          scope = "default"
-        },
-        String)
+    def body = new HashMap()
+    body.put('grant_type', 'password')
+    body.put('username', 'admin')
+    body.put('password', 'pamrx')
+    body.put('scope', 'default')
+    emrToken = restTemplate.postForEntity('http://159.65.225.138/apis/api/auth', body, Object)
   }
 
-  @Scheduled(fixedRateString = '300')
+  @Scheduled(fixedRateString = '30000')
   void syncPatients() {
-    def headers = new HttpHeaders().set('authorization', emrToken)
+    def headers = new HttpHeaders()
+    headers.setBearerAuth(emrToken.body.get('access_token'))
     def patients = restTemplate.exchange('http://159.65.225.138/apis/api/patient', HttpMethod.GET,
-        new HttpEntity<String>(headers), PatientList).getBody().patients
+        new HttpEntity<String>(headers), Patient[]).getBody().toList()
     patientService.sync(patients)
   }
-}
-
-class PatientList {
-  List<Patient> patients
 }
