@@ -21,11 +21,13 @@ class NotificationController {
     this.patientService = patientService
   }
 
-  @PostMapping('/notify/{patientId}/{medicationId}')
+  @PostMapping('/notify/{patientId}/{prescriptionId}')
   ResponseEntity sendNotification(@PathVariable String patientId, @PathVariable String medicationId) {
+    /*
     def patient = patientService.getPatientById(patientId)
-    def medication = medicationService.getMedicationById(medicationId)
+    def medicationName = patientService.getMedicationById(medicationId)
     notificationService.show(patient, "Pam Reminder", "Have you taken your ${medication.title} today?")
+    */
   }
 
   @PostMapping('/notify/{patientId}/{medicationId}/yes')

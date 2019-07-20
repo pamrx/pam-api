@@ -6,12 +6,19 @@ import com.notnoop.apns.ApnsService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.env.Environment
 import org.springframework.core.io.ClassPathResource
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 
 @Service
 class NotificationService {
+  private final PatientNotificationRepository patientNotificationRepository
+
   @Autowired
   Environment env
+
+  NotificationService(final PatientNotificationRepository patientNotificationRepository) {
+    this.patientNotificationRepository = patientNotificationRepository
+  }
 
   void show(Patient patient, String title, String message) {
     try {
@@ -23,5 +30,10 @@ class NotificationService {
     } catch (IOException e) {
       e.printStackTrace()
     }
+  }
+
+  @Scheduled(fixedRateString = '60000')
+  void evaluateNotifications() {
+
   }
 }

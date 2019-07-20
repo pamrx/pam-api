@@ -8,5 +8,5 @@ import org.springframework.stereotype.Repository
 @CompileStatic
 @Repository
 @RepositoryRestResource(exported = false)
-interface PatientRepository extends MongoRepository<Patient, String> {
+interface PatientPrescriptionRepository extends MongoRepository<PatientPrescription, String> {
 }

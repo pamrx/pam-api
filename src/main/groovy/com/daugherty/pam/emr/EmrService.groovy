@@ -1,6 +1,6 @@
 package com.daugherty.pam.emr
 
-import com.daugherty.pam.medication.MedicationService
+
 import com.daugherty.pam.patient.Patient
 import com.daugherty.pam.patient.PatientService
 import org.springframework.http.HttpEntity
@@ -17,17 +17,15 @@ import javax.annotation.PostConstruct
 class EmrService {
   private final RestTemplate restTemplate
   private final PatientService patientService
-  private final MedicationService medicationService
   private ResponseEntity<LinkedHashMap<String, String>> emrToken
 
-  EmrService(final RestTemplate restTemplate, final PatientService patientService, final MedicationService medicationService) {
+  EmrService(final RestTemplate restTemplate) {
     this.restTemplate = restTemplate
     this.patientService = patientService
-    this.medicationService = medicationService
   }
 
   @PostConstruct
-  @Scheduled(fixedRateString = '360000')
+  @Scheduled(fixedRateString = '350000')
   void getEmrToken() {
     def body = new HashMap()
     body.put('grant_type', 'password')
@@ -37,12 +35,26 @@ class EmrService {
     emrToken = restTemplate.postForEntity('http://159.65.225.138/apis/api/auth', body, Object)
   }
 
-  @Scheduled(fixedRateString = '30000')
-  void syncPatients() {
+  @Scheduled(fixedRateString = '10000')
+  void syncPatientPrescriptions() {
     def headers = new HttpHeaders()
     headers.setBearerAuth(emrToken.body.get('access_token'))
     def patients = restTemplate.exchange('http://159.65.225.138/apis/api/patient', HttpMethod.GET,
         new HttpEntity<String>(headers), Patient[]).getBody().toList()
-    patientService.sync(patients)
+    //patientService.sync(patients)
+  }
+
+  List<Patient> getPatients() {
+    def headers = new HttpHeaders()
+    headers.setBearerAuth(emrToken.body.get('access_token'))
+    restTemplate.exchange('http://1d59.65.225.138/apis/api/patient', HttpMethod.GET,
+        new HttpEntity<String>(headers), Patient[]).getBody()
+  }
+
+  Patient getPatientById(String id) {
+    def headers = new HttpHeaders()
+    headers.setBearerAuth(emrToken.body.get('access_token'))
+    restTemplate.exchange("http://159.65.225.138/apis/api/patient/${id}", HttpMethod.GET,
+        new HttpEntity<String>(headers), Patient).getBody() as Patient
   }
 }

@@ -1,4 +1,5 @@
-package com.daugherty.pam.usage
+package com.daugherty.pam.notification
+
 
 import groovy.transform.CompileStatic
 import org.springframework.data.mongodb.repository.MongoRepository
@@ -8,5 +9,5 @@ import org.springframework.stereotype.Repository
 @CompileStatic
 @Repository
 @RepositoryRestResource(exported = false)
-interface UsageRepository extends MongoRepository<Usage, String> {
+interface PatientNotificationRepository extends MongoRepository<PatientNotification, String> {
 }
