@@ -1,9 +1,11 @@
 package com.daugherty.pam.patient
 
 import com.daugherty.pam.emr.EmrService
+import groovy.transform.CompileStatic
 import org.springframework.stereotype.Service
 
 @Service
+@CompileStatic
 class PatientService {
   private final EmrService emrService
   private final PatientMetadataRepository patientMetadataRepository
@@ -25,8 +27,12 @@ class PatientService {
   }
 
   Patient getPatientByUsername(String username) {
-    def metadata = patientMetadataRepository.findByUsername()
+    def metadata = patientMetadataRepository.findByUsername(username)
     emrService.getPatientById(metadata.patientId)
+  }
+
+  String getMedicationNameFromPrescriptionId(String prescriptionId) {
+    patientPrescriptionRepository.findByPrescriptionId(prescriptionId).drug.split(" ").first()
   }
 
   void addPrescriptionToPatient(String id, PatientPrescription prescription) {

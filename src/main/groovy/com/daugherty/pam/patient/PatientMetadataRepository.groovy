@@ -10,6 +10,5 @@ import org.springframework.stereotype.Repository
 @RepositoryRestResource(exported = false)
 interface PatientMetadataRepository extends MongoRepository<PatientMetadata, String> {
   PatientMetadata findByPatientId(String patientId)
-
   PatientMetadata findByUsername(String username)
 }
