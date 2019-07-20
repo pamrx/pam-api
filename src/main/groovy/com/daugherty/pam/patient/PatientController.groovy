@@ -6,11 +6,10 @@ import groovy.util.logging.Slf4j
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 
 @Slf4j
-@RestController('/patients')
+@RestController()
 class PatientController {
   private final PatientService patientService
   private final NotificationService notificationService
@@ -20,7 +19,7 @@ class PatientController {
     this.notificationService = notificationService
   }
 
-  @GetMapping
+  @GetMapping('/patients')
   ResponseEntity<List<Patient>> getPatients() {
     try {
       ResponseEntity.ok(patientService.getPatients())
@@ -29,20 +28,12 @@ class PatientController {
     }
   }
 
-  @PostMapping('/patients/{id}/notify')
-  ResponseEntity sendNotification(@PathVariable String id) {
-    def patient = patientService.getPatientById(id)
-    notificationService.show(patient, "Pam Reminder", "Have you taken your medication today?")
-  }
-
-  @PostMapping('/patients/{id}/notify/yes')
-  ResponseEntity yesResponse(@PathVariable String id) {
-    patientService.incrementPostiveResponse()
-  }
-
-  @PostMapping('/patients/{id}/notify/no')
-  ResponseEntity noResponse(@PathVariable String id) {
-    def patient = patientService.getPatientById(id)
-    notificationService.show(patient, "Pam Reminder", "Have you taken your medication today?")
+  @GetMapping('/patients/{patientId}')
+  ResponseEntity<Patient> getPatientById(@PathVariable String patientId) {
+    try {
+      ResponseEntity.ok(patientService.getPatientById(patientId))
+    } catch (PamException e) {
+      ResponseEntity.notFound().build()
+    }
   }
 }

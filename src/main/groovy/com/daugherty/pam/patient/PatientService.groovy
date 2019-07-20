@@ -20,16 +20,16 @@ class PatientService {
     if (optionalPatient.isPresent()) return optionalPatient.get()
     throw PamException(ERROR_CODE.NOT_FOUND)
   }
-  /*
-   void incrementPositiveResponse(String id) {
-     def patient = getPatientById(id)
-     patient.prescriptions.each { it.positiveResponse++ }
+
+  void incrementPositiveResponse(String patientId, String medicationId) {
+    def patient = getPatientById(patientId)
+    patient.prescriptions.find { it.medicationId == medicationId }.positiveResponse++
      patientRepository.save(patient)
    }
 
-   void incrementPositiveResponse(String id) {
+  void deccrementPositiveResponse(String id, String medicationId) {
      def patient = getPatientById(id)
-     patient.prescriptions.each { it.positiveResponse++ }
+    patient.prescriptions.find { it.medicationId == medicationId }.positiveResponse--
      patientRepository.save(patient)
-   }*/
+  }
 }
