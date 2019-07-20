@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import groovy.transform.CompileStatic
 import groovy.transform.EqualsAndHashCode
 import groovy.transform.ToString
+import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
 
 @ToString
@@ -11,6 +12,8 @@ import org.springframework.data.mongodb.core.mapping.Document
 @EqualsAndHashCode
 @Document(collection = 'patients')
 class Patient {
+  @Id
+  String id
   String title
   String fname
   String mname

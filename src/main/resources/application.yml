@@ -8,3 +8,7 @@ spring:
       host: pam-db
       port: 27017
       database: pam
+
+pam:
+  notification:
+    password: ${NOTIFICATION_PASSWORD}
