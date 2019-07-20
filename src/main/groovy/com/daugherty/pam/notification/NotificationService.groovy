@@ -18,7 +18,7 @@ class NotificationService {
       InputStream inputStream = new ClassPathResource("pushcert.p12").getInputStream()
       ApnsService service = APNS.newService().withCert(inputStream, env.getProperty('pam.notification.password'))
           .withSandboxDestination().build()
-      String payload = APNS.newPayload().alertTitle(title).alertBody(message).build()
+      String payload = APNS.newPayload().alertTitle(title).alertBody(message).category('confirm').build()
       service.push(patient.notificationToken, payload)
     } catch (IOException e) {
       e.printStackTrace()

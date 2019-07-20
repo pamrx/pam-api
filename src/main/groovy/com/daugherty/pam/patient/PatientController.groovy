@@ -4,7 +4,10 @@ import com.daugherty.pam.exception.PamException
 import com.daugherty.pam.notification.NotificationService
 import groovy.util.logging.Slf4j
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RestController
 
 @Slf4j
 @RestController('/patients')
@@ -26,9 +29,20 @@ class PatientController {
     }
   }
 
-  @PostMapping('/patients/{id}')
-  ResponseEntity sendNotification(@PathVariable String id, @RequestBody String message) {
+  @PostMapping('/patients/{id}/notify')
+  ResponseEntity sendNotification(@PathVariable String id) {
     def patient = patientService.getPatientById(id)
-    notificationService.show(patient, "Test Title", message)
+    notificationService.show(patient, "Pam Reminder", "Have you taken your medication today?")
+  }
+
+  @PostMapping('/patients/{id}/notify/yes')
+  ResponseEntity yesResponse(@PathVariable String id) {
+    patientService.incrementPostiveResponse()
+  }
+
+  @PostMapping('/patients/{id}/notify/no')
+  ResponseEntity noResponse(@PathVariable String id) {
+    def patient = patientService.getPatientById(id)
+    notificationService.show(patient, "Pam Reminder", "Have you taken your medication today?")
   }
 }

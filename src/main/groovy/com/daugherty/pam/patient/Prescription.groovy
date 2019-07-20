@@ -15,4 +15,6 @@ class Prescription {
   Integer frequency
   FREQUENCY_UNIT frequencyUnit
   String doses
+  Integer positiveResponse
+  Integer negativeResponse
 }
