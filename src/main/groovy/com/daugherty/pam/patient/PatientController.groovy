@@ -35,7 +35,7 @@ class PatientController {
     }
   }
 
-  @GetMapping('/patients/{username}')
+  @GetMapping('/patients/{username}/login')
   ResponseEntity<Patient> getPatientByUsername(@PathVariable String username) {
     try {
       ResponseEntity.ok(patientService.getPatientByUsername(username))
