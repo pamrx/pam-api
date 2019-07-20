@@ -1,14 +1,15 @@
 package com.daugherty.pam.medication
 
+import com.daugherty.pam.emr.EmrService
 import com.daugherty.pam.exception.ERROR_CODE
 import org.springframework.stereotype.Service
 
 @Service
 class MedicationService {
-  private final MedicationRepository medicationRepository
+  private final EmrService emrService
 
-  MedicationService(final MedicationRepository medicationRepository) {
-    this.medicationRepository = medicationRepository
+  MedicationService(final EmrService emrService) {
+    this.emrService = emrService
   }
 
   List<Medication> getMedications() {
