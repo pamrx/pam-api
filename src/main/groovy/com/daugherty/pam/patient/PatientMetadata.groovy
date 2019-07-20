@@ -1,4 +1,4 @@
-package com.daugherty.pam.medication
+package com.daugherty.pam.patient
 
 import groovy.transform.CompileStatic
 import groovy.transform.EqualsAndHashCode

@@ -35,6 +35,15 @@ class PatientController {
     }
   }
 
+  @GetMapping('/patients/{username}')
+  ResponseEntity<Patient> getPatientByUsername(@PathVariable String username) {
+    try {
+      ResponseEntity.ok(patientService.getPatientByUsername(username))
+    } catch (PamException e) {
+      ResponseEntity.notFound().build()
+    }
+  }
+
   @PostMapping('/patients/{patientId}/prescriptions')
   ResponseEntity addPrescriptionToPatient(@PathVariable String patientId, @RequestBody PatientPrescription prescription) {
     patientService.addPrescriptiontoPatient(patientId, prescription)

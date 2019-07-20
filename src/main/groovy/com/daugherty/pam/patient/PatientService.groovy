@@ -24,23 +24,9 @@ class PatientService {
     emrService.getPatientById(id)
   }
 
-  void sync(List<Patient> patients) {
-    patients.each {
-      def optionalPatient = patientRepository.findById(it.id)
-      if (!optionalPatient.isPresent()) patientRepository.save(it)
-    }
-  }
-
-  void incrementPositiveResponse(String patientId, String medicationId) {
-    def patient = getPatientById(patientId)
-    patient.prescriptions.find { it.medicationId == medicationId }.positiveResponse++
-    patientRepository.save(patient)
-   }
-
-  void decrementPositiveResponse(String id, String medicationId) {
-    def patient = getPatientById(id)
-    patient.prescriptions.find { it.medicationId == medicationId }.negativeResponse++
-    patientRepository.save(patient)
+  Patient getPatientByUsername(String username) {
+    def metadata = patientMetadataRepository.findByUsername()
+    emrService.getPatientById(metadata.patientId)
   }
 
   void addPrescriptionToPatient(String id, PatientPrescription prescription) {
