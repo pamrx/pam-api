@@ -28,12 +28,12 @@ class NotificationController {
     notificationService.show(patient, "Pam Reminder", "Have you taken your ${medication.title} today?")
   }
 
-  @PostMapping('/{patientId}/{medicationId}/yes')
+  @PostMapping('/notify/{patientId}/{medicationId}/yes')
   ResponseEntity yesResponse(@PathVariable String patientId, @PathVariable String medicationId) {
     patientService.incrementPostiveResponse(patientId, medicationId)
   }
 
-  @PostMapping('/{patientId}/{medicationId}/no')
+  @PostMapping('/notify/{patientId}/{medicationId}/no')
   ResponseEntity noResponse(@PathVariable String patientId, @PathVariable String medicationId) {
     patientService.decrementPostiveResponse(patientId, medicationId)
   }
