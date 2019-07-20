@@ -1,0 +1,6 @@
+spring:
+  data:
+    mongodb:
+      host: 159.65.225.138
+      port: 27017
+      database: pam
