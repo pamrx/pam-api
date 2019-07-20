@@ -21,15 +21,22 @@ class PatientService {
     throw PamException(ERROR_CODE.NOT_FOUND)
   }
 
+  void sync(List<Patient> patients) {
+    patients.each {
+      def optionalPatient = patientRepository.findById(it.id)
+      if (!optionalPatientisPresent()) patientRepository.save(it)
+    }
+  }
+
   void incrementPositiveResponse(String patientId, String medicationId) {
     def patient = getPatientById(patientId)
     patient.prescriptions.find { it.medicationId == medicationId }.positiveResponse++
-     patientRepository.save(patient)
+    patientRepository.save(patient)
    }
 
   void deccrementPositiveResponse(String id, String medicationId) {
-     def patient = getPatientById(id)
-    patient.prescriptions.find { it.medicationId == medicationId }.positiveResponse--
-     patientRepository.save(patient)
+    def patient = getPatientById(id)
+    patient.prescriptions.find { it.medicationId == medicationId }.negativeResponse++
+    patientRepository.save(patient)
   }
 }
