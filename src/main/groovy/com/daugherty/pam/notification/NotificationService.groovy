@@ -159,7 +159,7 @@ class NotificationService {
                 break
             }
           }
-      patientScore = normalizeScore(patientScore, 0, patientNotifications.size()) * 100 // We aren't certain why this conversion factor is required, but it seems to be
+      patientScore = normalizeScore(patientScore, 0, patientNotifications.size()).round() * 100 // We aren't certain why this conversion factor is required, but it seems to be
       log.info("Patient ${patientId} Score: ${patientScore}")
       patientService.updatePatientPrescriptionAdherenceScore(patientId, patientScore)
     }
@@ -205,8 +205,8 @@ class NotificationService {
       }
   }
 
-  private static Integer normalizeScore(Integer score, Integer min, Integer max) {
-    ((score - min) / (max - min)).toInteger()
+  private static Float normalizeScore(Float score, Float min, Float max) {
+    ((score.toFloat() - min.toFloat()) / (max.toFloat() - min.toFloat())).toFloat()
   }
 }
 
