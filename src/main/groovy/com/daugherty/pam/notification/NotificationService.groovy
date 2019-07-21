@@ -15,6 +15,7 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 
 import java.time.Instant
+import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 
 @CompileStatic
@@ -91,10 +92,10 @@ class NotificationService {
 
   @Scheduled(fixedRateString = '60000')
   void evaluateNotifications() {
-    log.info('Evaluating snoozed notifications')
     def notifications = patientNotificationRepository.findAll()
 
     // Handle snooze
+    log.info('Evaluating snoozed notifications')
     notifications
         .findAll { it.response == RESPONSE.SNOOZE }
         .each { notification ->
@@ -108,23 +109,33 @@ class NotificationService {
         }
 
     // Handle individual adherence score
+    log.info('Calculating Scores and times taken today for Prescriptions')
+    def localNow = Instant.now().atOffset(ZoneOffset.UTC).toLocalDate()
     def notificationsByPrescriptionId = notifications
         .groupBy { notification -> notification.prescriptionId }
     notificationsByPrescriptionId.keySet().each { prescriptionId ->
       def prescriptionNotifications = notificationsByPrescriptionId[prescriptionId]
+
+      def prescription = patientPrescriptionRepository.findById(prescriptionId).orElse(null)
+      if (!prescription) {
+        log.warn("Cannot find prescription for adherence scoring")
+      }
+
       Integer prescriptionScore = 0
       prescriptionNotifications.each { notification ->
+        if(notification?.responseTime) {
+          def localResponseTime = notification.responseTime.atOffset(ZoneOffset.UTC).toLocalDate()
+          if(localResponseTime == localNow) {
+            prescription.timesTakenToday += 1
+          }
+        }
         prescriptionScore += notification?.response ? 1 : 0
       }
 
       prescriptionScore = ((prescriptionScore / prescriptionNotifications.size()) * 100).toInteger()
-      def prescription = patientPrescriptionRepository.findById(prescriptionId).orElse(null)
-      if (prescription) {
-        prescription.adherence = prescriptionScore
-        patientPrescriptionRepository.save(prescription)
-      } else {
-        log.warn("Cannot find prescription for adherence scoring")
-      }
+
+      prescription.adherence = prescriptionScore
+      patientPrescriptionRepository.save(prescription)
     }
 
     // Handle overall patient adherence score

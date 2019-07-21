@@ -78,7 +78,14 @@ class PatientService {
   }
 
   List<PatientPrescription> getPatientPrescriptions(String patientId) {
-    emrService.getPrescriptionsForPatient(patientId)
+    def patientPrescriptions = emrService.getPrescriptionsForPatient(patientId)
+    patientPrescriptions.each { prescription ->
+      def storedPrescription = getPatientPrescriptionByPrescriptionId(prescription.id)
+      prescription.adherence = storedPrescription?.adherence
+      prescription.timesTakenToday = storedPrescription?.timesTakenToday
+    }
+
+    patientPrescriptions
   }
 
   void addPrescriptionToPatient(String patientId, PatientPrescription prescription) {

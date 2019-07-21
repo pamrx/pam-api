@@ -26,4 +26,5 @@ class PatientPrescription {
   String per_refill // number - quantity per refill
   String filled_date
   Integer adherence
+  Integer timesTakenToday = 0
 }
