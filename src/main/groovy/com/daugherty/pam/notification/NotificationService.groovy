@@ -42,9 +42,9 @@ class NotificationService {
   PatientNotification sendNotification(PatientMetadata patientMetadata, PatientPrescription patientPrescription) {
     def medicationName = patientPrescription.drug.split(" ").first()
     def notification = new PatientNotification(
-        patientId: patientMetadata.patientId,
-        prescriptionId: patientPrescription.id,
-        initialNotificationTime: Instant.now()
+      patientId: patientMetadata.patientId,
+      prescriptionId: patientPrescription.id,
+      initialNotificationTime: Instant.now()
     )
     def savedNotification = patientNotificationRepository.save(notification)
     push(patientMetadata, savedNotification.id, "PAM Reminder", "Have you taken your ${medicationName} today?")
@@ -55,9 +55,9 @@ class NotificationService {
     try {
       InputStream inputStream = new ClassPathResource("pushcert.p12").getInputStream()
       ApnsService service = APNS.newService().withCert(inputStream, env.getProperty('pam.notification.password'))
-          .withSandboxDestination().build()
+        .withSandboxDestination().build()
       String payload = APNS.newPayload().alertTitle(title).alertBody(message).category('confirm')
-          .customField('notificationId', notificationId).build()
+        .customField('notificationId', notificationId).build()
       service.push(patientMetadata.notificationToken, payload)
     } catch (IOException e) {
       e.printStackTrace()
@@ -78,34 +78,36 @@ class NotificationService {
 
   @Scheduled(fixedRateString = '60000')
   void evaluateNotifications() {
-    // handle snoozed reminders
     patientNotificationRepository.findAll()
-        .findAll { it.response = RESPONSE.SNOOZE }
-        .each {
-      if (it.responseTime?.plusSeconds(SNOOZE_SECONDS)?.isAfter(Instant.now())) {
-        sendNotification(
+      .findAll { it.response = RESPONSE.SNOOZE }
+      .each {
+        if (it.responseTime?.plusSeconds(SNOOZE_SECONDS)?.isAfter(Instant.now())) {
+          sendNotification(
             patientMetadataRepository.findByPatientId(it.patientId),
-            patientPrescriptionRepository.findB(it.prescriptionId)
-        )
+            patientPrescriptionRepository.findTopById(it.prescriptionId)
+          )
+        }
       }
-    }
-    // handle new notifications
-    // TODO
-    patientPrescriptionRepository.findAll().each {
-      def patientId = it.patientId
-      def latestNotification = findLatestNotification(it.patient_id, it.id)
-      switch (it.interval) {
-        case PRESCRIPTION_INTERVAL.DAILY:
-          if (latestNotification.initialNotificationTime.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))) {
-            sendNotification(patientMetadataRepository.findByPatientId(it.patient_id), it)
-          }
-          break
-        case PRESCRIPTION_INTERVAL.TWICE_DAILY:
-          if (latestNotification.initialNotificationTime.isBefore(Instant.now().minus(12, ChronoUnit.HOURS))) {
-            sendNotification(patientMetadataRepository.findByPatientId(it.patient_id), it)
-          }
-          break
+
+    patientPrescriptionRepository
+      .findAll()
+      .each {
+        def latestNotification = findLatestNotification(it.patient_id, it.id)
+        switch (it.interval) {
+          case PRESCRIPTION_INTERVAL.DAILY:
+            if (latestNotification.initialNotificationTime.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))) {
+              sendNotification(patientMetadataRepository.findByPatientId(it.patient_id), it)
+            }
+            break
+          case PRESCRIPTION_INTERVAL.TWICE_DAILY:
+            if (latestNotification.initialNotificationTime.isBefore(Instant.now().minus(12, ChronoUnit.HOURS))) {
+              sendNotification(patientMetadataRepository.findByPatientId(it.patient_id), it)
+            }
+            break
+          case PRESCRIPTION_INTERVAL.AS_NEEDED:
+            // At  this time we have decided not to notify for this interval
+            break
+        }
       }
-    }
   }
 }
