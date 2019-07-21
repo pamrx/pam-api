@@ -80,7 +80,7 @@ class NotificationService {
     patientNotificationRepository.findAll()
         .findAll { it.response = RESPONSE.SNOOZE }
         .each {
-      if (it.responseTime.plusSeconds(SNOOZE_SECONDS).isAfter(Instant.now())) {
+      if (it.responseTime?.plusSeconds(SNOOZE_SECONDS)?.isAfter(Instant.now())) {
         sendNotification(
             patientMetadataRepository.findByPatientId(it.patientId),
             patientPrescriptionRepository.findByPrescriptionId(it.prescriptionId)
