@@ -1,6 +1,8 @@
 package com.daugherty.pam.patient
 
 import com.daugherty.pam.emr.EmrService
+import com.daugherty.pam.exception.ERROR_CODE
+import com.daugherty.pam.exception.PamException
 import groovy.transform.CompileStatic
 import org.springframework.stereotype.Service
 
@@ -35,7 +37,23 @@ class PatientService {
     emrService.getPatientById(metadata.patientId)
   }
 
-  PatientPrescription getPatientPrescriptionFromPrescriptionId(String prescriptionId) {
+  // TODO: BRAD CALL THIS!
+  Patient updatePatientPrescriptionAdherenceScore(String patientId, Float score) {
+    def patient = emrService.getPatientById(patientId)
+    if(!patient) {
+      throw new PamException(ERROR_CODE.NOT_FOUND)
+    }
+
+    patient.adherence = score
+
+    updatePatient(patient)
+  }
+
+  Patient updatePatient(Patient patient) {
+    emrService.updatePatient(patient)
+  }
+
+  PatientPrescription getPatientPrescriptionByPrescriptionId(String prescriptionId) {
     patientPrescriptionRepository.findById(prescriptionId).orElse(null)
   }
 

@@ -27,7 +27,7 @@ class NotificationController {
   @PostMapping('/notify/{patientId}/{prescriptionId}')
   ResponseEntity<PatientNotification> sendNotification(@PathVariable String patientId, @PathVariable String prescriptionId) {
     def patientMetadata = patientService.getPatientMetadataByPatientId(patientId)
-    def patientPrescription = patientService.getPatientPrescriptionFromPrescriptionId(prescriptionId)
+    def patientPrescription = patientService.getPatientPrescriptionByPrescriptionId(prescriptionId)
     def notification = notificationService.sendNotification(patientMetadata, patientPrescription)
     ResponseEntity.ok(notification)
   }

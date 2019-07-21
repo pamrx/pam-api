@@ -28,4 +28,5 @@ class Patient {
   String ethnicity
   PatientPrescription[] prescriptions
   String notificationToken
+  Float adherence
 }

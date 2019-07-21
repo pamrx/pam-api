@@ -41,8 +41,7 @@ class EmrService {
   void syncPatientPrescriptions() {
     def headers = new HttpHeaders()
     headers.setBearerAuth(emrToken.body.get('access_token'))
-    def patients = restTemplate.exchange('http://159.65.225.138/apis/api/patient', HttpMethod.GET,
-        new HttpEntity<String>(headers), Patient[]).getBody().toList()
+    def patients = getPatients()
     //patientService.sync(patients)
   }
 
@@ -73,5 +72,12 @@ class EmrService {
     headers.setBearerAuth(emrToken.body.get('access_token'))
     log.info(prescription.toString())
     restTemplate.exchange("http://159.65.225.138/apis/api/patient/${patientId}/prescription", HttpMethod.POST, new HttpEntity<PatientPrescription>(prescription, headers), PatientPrescription)
+  }
+
+  Patient updatePatient(Patient patient) {
+    def headers = new HttpHeaders()
+    headers.setBearerAuth(emrToken.body.get('access_token'))
+    restTemplate.exchange("http://159.65.225.138/apis/api/patient/${patient.pid}", HttpMethod.PUT,
+        new HttpEntity<Patient>(patient, headers), Patient).getBody() as Patient
   }
 }
