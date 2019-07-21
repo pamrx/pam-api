@@ -37,6 +37,10 @@ class NotificationService {
     this.patientMetadataRepository = patientMetadataRepository
   }
 
+  PatientNotification findLatestNotification(String patientId, String prescriptionId) {
+    patientNotificationRepository.findTopByPatientIdAndPrescriptionId(patientId, prescriptionId)
+  }
+
   PatientNotification sendNotification(PatientMetadata patientMetadata, PatientPrescription patientPrescription) {
     def medicationName = patientPrescription.drug.split(" ").first()
     def notification = new PatientNotification(
@@ -83,12 +87,16 @@ class NotificationService {
       if (it.responseTime?.plusSeconds(SNOOZE_SECONDS)?.isAfter(Instant.now())) {
         sendNotification(
             patientMetadataRepository.findByPatientId(it.patientId),
-            patientPrescriptionRepository.findById(it.id).orElse(null)
+            patientPrescriptionRepository.findByPrescriptionId(it.prescriptionId)
         )
       }
     }
-
     // handle new notifications
     // TODO
+    patientPrescriptionRepository.findAll()
+        .each {
+      def patientId = it.patientId
+      it.start_date
+    }
   }
 }

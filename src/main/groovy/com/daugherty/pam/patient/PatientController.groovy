@@ -2,6 +2,8 @@ package com.daugherty.pam.patient
 
 import com.daugherty.pam.exception.PamException
 import com.daugherty.pam.notification.NotificationService
+import com.daugherty.pam.notification.PatientNotification
+import com.daugherty.pam.notification.RESPONSE
 import groovy.util.logging.Slf4j
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -54,6 +56,17 @@ class PatientController {
   @GetMapping('/patients/{patientId}/prescriptions')
   ResponseEntity<List<PatientPrescription>> getPrescriptionsForPatient(@PathVariable String patientId) {
     ResponseEntity.ok(patientService.getPatientPrescriptions(patientId))
+  }
+
+  @PostMapping('/patients/{patientId}/{prescriptionId}')
+  ResponseEntity<PatientNotification> updateMostRecentNotification(
+      @PathVariable String patientId, @PathVariable String prescriptionId, @RequestBody RESPONSE response) {
+    ResponseEntity.ok(
+        notificationService.updateNotificationResponse(
+            notificationService.findLatestNotification(patientId, prescriptionId).id,
+            response
+        )
+    )
   }
 
   @PostMapping('/patients/{patientId}/notificationToken')
