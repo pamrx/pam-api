@@ -9,7 +9,7 @@ import groovy.transform.ToString
 @CompileStatic
 @EqualsAndHashCode
 class Patient {
-  String id
+  String pid
   String title
   String fname
   String mname

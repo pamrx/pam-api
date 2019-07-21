@@ -2,13 +2,16 @@ package com.daugherty.pam.notification
 
 import com.daugherty.pam.medication.MedicationService
 import com.daugherty.pam.patient.PatientService
+import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 
 @Slf4j
+@CompileStatic
 @RestController()
 class NotificationController {
   private final NotificationService notificationService
@@ -23,18 +26,14 @@ class NotificationController {
 
   @PostMapping('/notify/{patientId}/{prescriptionId}')
   ResponseEntity sendNotification(@PathVariable String patientId, @PathVariable String prescriptionId) {
-    def patient = patientService.getPatientById(patientId)
-    def medicationName = patientService.getMedicationNameFromPrescriptionId(prescriptionId)
-    notificationService.show(patient, "Pam Reminder", "Have you taken your ${medicationName} today?")
+    def patientMetadata = patientService.getPatientMetadataByPatientId(patientId)
+    def patientPrescription = patientService.getPatientPrescriptionFromPrescriptionId(prescriptionId)
+    notificationService.sendNotification(patientMetadata, patientPrescription)
+    ResponseEntity.ok().body('Notification sent')
   }
 
-  @PostMapping('/notify/{patientId}/{medicationId}/yes')
-  ResponseEntity yesResponse(@PathVariable String patientId, @PathVariable String medicationId) {
-    patientService.incrementPostiveResponse(patientId, medicationId)
-  }
-
-  @PostMapping('/notify/{patientId}/{medicationId}/no')
-  ResponseEntity noResponse(@PathVariable String patientId, @PathVariable String medicationId) {
-    patientService.decrementPostiveResponse(patientId, medicationId)
+  @PostMapping('/notifications/{notificationId}')
+  ResponseEntity yesResponse(@PathVariable String notificationId, @RequestBody RESPONSE response) {
+    notificationService.updateNotificationResponse(notificationId, response)
   }
 }

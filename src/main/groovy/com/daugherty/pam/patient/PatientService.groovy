@@ -26,13 +26,17 @@ class PatientService {
     emrService.getPatientById(id)
   }
 
+  PatientMetadata getPatientMetadataByPatientId(String patientId) {
+    patientMetadataRepository.findByPatientId(patientId)
+  }
+
   Patient getPatientByUsername(String username) {
     def metadata = patientMetadataRepository.findByUsername(username)
     emrService.getPatientById(metadata.patientId)
   }
 
-  String getMedicationNameFromPrescriptionId(String prescriptionId) {
-    patientPrescriptionRepository.findByPrescriptionId(prescriptionId).drug.split(" ").first()
+  PatientPrescription getPatientPrescriptionFromPrescriptionId(String prescriptionId) {
+    patientPrescriptionRepository.findByPrescriptionId(prescriptionId)
   }
 
   void addPrescriptionToPatient(String id, PatientPrescription prescription) {
