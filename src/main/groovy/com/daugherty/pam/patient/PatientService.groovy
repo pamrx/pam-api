@@ -54,7 +54,6 @@ class PatientService {
     emrService.getPatientById(metadata.patientId)
   }
 
-  // TODO: BRAD CALL THIS!
   Patient updatePatientPrescriptionAdherenceScore(String patientId, Float score) {
     def patient = emrService.getPatientById(patientId)
     if (!patient) {

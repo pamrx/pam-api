@@ -25,6 +25,7 @@ class NotificationService {
   private final PatientNotificationRepository patientNotificationRepository
   private final PatientPrescriptionRepository patientPrescriptionRepository
   private final PatientMetadataRepository patientMetadataRepository
+  private final PatientService patientService
 
   private final int SNOOZE_SECONDS = 300
 
@@ -33,11 +34,12 @@ class NotificationService {
 
   NotificationService(final EmrService emrService, final PatientNotificationRepository patientNotificationRepository,
                       final PatientPrescriptionRepository patientPrescriptionRepository,
-                      final PatientMetadataRepository patientMetadataRepository) {
+                      final PatientMetadataRepository patientMetadataRepository, final PatientService patientService) {
     this.emrService = emrService
     this.patientNotificationRepository = patientNotificationRepository
     this.patientPrescriptionRepository = patientPrescriptionRepository
     this.patientMetadataRepository = patientMetadataRepository
+    this.patientService = patientService
   }
 
   PatientNotification findLatestNotification(String patientId, String prescriptionId) {
@@ -54,10 +56,10 @@ class NotificationService {
   PatientNotification sendNewNotification(PatientMetadata patientMetadata, PatientPrescription patientPrescription) {
     def medicationName = patientPrescription.drug.split(" ").first()
     def notification = new PatientNotification(
-        patientId: patientMetadata.patientId,
-        prescriptionId: patientPrescription.id,
-        initialNotificationTime: Instant.now(),
-        lastNotificationTime: Instant.now()
+      patientId: patientMetadata.patientId,
+      prescriptionId: patientPrescription.id,
+      initialNotificationTime: Instant.now(),
+      lastNotificationTime: Instant.now()
     )
     def savedNotification = patientNotificationRepository.insert(notification)
     push(patientMetadata, savedNotification.id, "PAM Reminder", "Have you taken your ${medicationName} today?")
@@ -68,9 +70,9 @@ class NotificationService {
     try {
       InputStream inputStream = new ClassPathResource("pushcert.p12").getInputStream()
       ApnsService service = APNS.newService().withCert(inputStream, env.getProperty('pam.notification.password'))
-          .withSandboxDestination().build()
+        .withSandboxDestination().build()
       String payload = APNS.newPayload().alertTitle(title).alertBody(message).category('confirm')
-          .customField('notificationId', notificationId).build()
+        .customField('notificationId', notificationId).build()
       service.push(patientMetadata.notificationToken, payload)
     } catch (IOException e) {
       e.printStackTrace()
@@ -91,45 +93,77 @@ class NotificationService {
   @Scheduled(fixedRateString = '60000')
   void evaluateNotifications() {
     log.info('Evaluating snoozed notifications')
-    patientNotificationRepository.findAll()
-        .findAll { it.response == RESPONSE.SNOOZE }
-        .each { notification ->
-          if (Instant.now().isAfter(notification.responseTime?.plusSeconds(SNOOZE_SECONDS))) {
-            resendNotification(
-                patientMetadataRepository.findByPatientId(notification.patientId),
-                patientPrescriptionRepository.findTopById(notification.prescriptionId),
-                notification
-            )
+    def notifications = patientNotificationRepository.findAll()
+
+    notifications
+      .findAll { it.response == RESPONSE.SNOOZE }
+      .each { notification ->
+        if (Instant.now().isAfter(notification.responseTime?.plusSeconds(SNOOZE_SECONDS))) {
+          resendNotification(
+            patientMetadataRepository.findByPatientId(notification.patientId),
+            patientPrescriptionRepository.findTopById(notification.prescriptionId),
+            notification
+          )
+        }
+      }
+
+    def notificationsByPatientId = notifications
+      .groupBy { notification -> notification.patientId }
+
+    notificationsByPatientId.keySet().each { patientId ->
+      log.info('Calculating Score for Patient ' + patientId)
+      def patientScore = BigDecimal.ZERO
+        notificationsByPatientId[patientId]
+        .toSorted { a, b -> a.responseTime <=> b.responseTime }
+        .withIndex()
+        .each { notificationAndIndex ->
+          def weight = (notificationsByPatientId[patientId].size() - (notificationAndIndex.second + 1)) / notificationsByPatientId[patientId].size()
+          switch (notificationAndIndex.first.response) {
+            case RESPONSE.YES:
+              patientScore = patientScore + weight * BigDecimal.valueOf(10)
+              break
+            case RESPONSE.IGNORE:
+              patientScore = patientScore + weight * BigDecimal.valueOf(-10)
+              break
           }
         }
+      patientScore = patientScore * 1000 // We aren't certain why this conversion factor is required, but it seems to be
+      patientService.updatePatientPrescriptionAdherenceScore(patientId, normalizeScore(patientScore.floatValue(), 0f, 100f).toInteger())
+    }
 
     log.info('Evaluating new notifications')
     patientPrescriptionRepository
-        .findAll()
-        .each { prescription ->
-          def patientMetadata = patientMetadataRepository.findByPatientId(prescription.patient_id)
-          if (patientMetadata?.notificationToken) { //only evaluate patients with logins
-            def latestNotification = findLatestNotification(prescription.patient_id, prescription.id)
-            if (!latestNotification) {
-              sendNewNotification(patientMetadata, prescription)
-            } else {
-              switch (prescription.interval) {
-                case PRESCRIPTION_INTERVAL.DAILY:
-                  if (latestNotification.lastNotificationTime.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))) {
-                    sendNewNotification(patientMetadata, prescription)
-                  }
-                  break
-                case PRESCRIPTION_INTERVAL.TWICE_DAILY:
-                  if (latestNotification.lastNotificationTime.isBefore(Instant.now().minus(12, ChronoUnit.HOURS))) {
-                    sendNewNotification(patientMetadata, prescription)
-                  }
-                  break
-                case PRESCRIPTION_INTERVAL.AS_NEEDED:
-                  // At  this time we have decided not to notify for this interval
-                  break
-              }
+      .findAll()
+      .each { prescription ->
+        def patientMetadata = patientMetadataRepository.findByPatientId(prescription.patient_id)
+        if (patientMetadata?.notificationToken) { //only evaluate patients with logins
+          def latestNotification = findLatestNotification(prescription.patient_id, prescription.id)
+          if (!latestNotification) {
+            sendNewNotification(patientMetadata, prescription)
+          } else {
+            switch (prescription.interval) {
+              case PRESCRIPTION_INTERVAL.DAILY:
+                if (latestNotification.lastNotificationTime.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))) {
+                  sendNewNotification(patientMetadata, prescription)
+                }
+                break
+              case PRESCRIPTION_INTERVAL.TWICE_DAILY:
+                if (latestNotification.lastNotificationTime.isBefore(Instant.now().minus(12, ChronoUnit.HOURS))) {
+                  sendNewNotification(patientMetadata, prescription)
+                }
+                break
+              case PRESCRIPTION_INTERVAL.AS_NEEDED:
+                // At  this time we have decided not to notify for this interval
+                break
             }
           }
         }
+      }
+  }
+
+  private static Float normalizeScore(Float score, Float min, Float max) {
+    def a = ((score - min) / (max - min))
+    return a.toFloat()
   }
 }
+

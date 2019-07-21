@@ -63,7 +63,6 @@ class EmrService {
   List<PatientPrescription> getPrescriptionsForPatient(String patientId) {
     def headers = new HttpHeaders()
     headers.setBearerAuth(emrToken.body.get('access_token'))
-    log.info("Getting prescription info for patient ${patientId}")
     try {
       restTemplate.exchange("http://159.65.225.138/apis/api/patient/${patientId}/prescription", HttpMethod.GET,
           new HttpEntity<String>(headers), PatientPrescription[]).body as List<PatientPrescription>
