@@ -47,7 +47,7 @@ class EmrService {
   List<Patient> getPatients() {
     def headers = new HttpHeaders()
     headers.setBearerAuth(emrToken.body.get('access_token'))
-    restTemplate.exchange('http://1d59.65.225.138/apis/api/patient', HttpMethod.GET,
+    restTemplate.exchange('http://159.65.225.138/apis/api/patient', HttpMethod.GET,
         new HttpEntity<String>(headers), Patient[]).getBody()
   }
 
@@ -57,4 +57,6 @@ class EmrService {
     restTemplate.exchange("http://159.65.225.138/apis/api/patient/${id}", HttpMethod.GET,
         new HttpEntity<String>(headers), Patient).getBody() as Patient
   }
+
+
 }
