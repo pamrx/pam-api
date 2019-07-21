@@ -54,7 +54,7 @@ class PatientService {
     emrService.getPatientById(metadata.patientId)
   }
 
-  Patient updatePatientPrescriptionAdherenceScore(String patientId, Float score) {
+  Patient updatePatientPrescriptionAdherenceScore(String patientId, Integer score) {
     def patient = emrService.getPatientById(patientId)
     if (!patient) {
       throw new PamException(ERROR_CODE.NOT_FOUND)

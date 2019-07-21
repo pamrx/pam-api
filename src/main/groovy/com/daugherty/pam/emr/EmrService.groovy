@@ -67,7 +67,6 @@ class EmrService {
       restTemplate.exchange("http://159.65.225.138/apis/api/patient/${patientId}/prescription", HttpMethod.GET,
           new HttpEntity<String>(headers), PatientPrescription[]).body as List<PatientPrescription>
     } catch (HttpClientErrorException e) {
-      log.warn("Exception caught getting prescriptions for patient ${patientId}")
       return []
     }
   }

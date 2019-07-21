@@ -55,10 +55,10 @@ class NotificationService {
 
   PatientNotification sendNewNotification(PatientMetadata patientMetadata, PatientPrescription patientPrescription, String message) {
     def notification = new PatientNotification(
-      patientId: patientMetadata.patientId,
-      prescriptionId: patientPrescription.id,
-      initialNotificationTime: Instant.now(),
-      lastNotificationTime: Instant.now()
+        patientId: patientMetadata.patientId,
+        prescriptionId: patientPrescription.id,
+        initialNotificationTime: Instant.now(),
+        lastNotificationTime: Instant.now()
     )
     def savedNotification = patientNotificationRepository.insert(notification)
     push(patientMetadata, savedNotification.id, "PAM Reminder", message)
@@ -69,9 +69,9 @@ class NotificationService {
     try {
       InputStream inputStream = new ClassPathResource("pushcert.p12").getInputStream()
       ApnsService service = APNS.newService().withCert(inputStream, env.getProperty('pam.notification.password'))
-        .withSandboxDestination().build()
+          .withSandboxDestination().build()
       String payload = APNS.newPayload().alertTitle(title).alertBody(message).category('confirm')
-        .customField('notificationId', notificationId).build()
+          .customField('notificationId', notificationId).build()
       service.push(patientMetadata.notificationToken, payload)
     } catch (IOException e) {
       e.printStackTrace()
@@ -94,40 +94,62 @@ class NotificationService {
     log.info('Evaluating snoozed notifications')
     def notifications = patientNotificationRepository.findAll()
 
+    // Handle snooze
     notifications
-      .findAll { it.response == RESPONSE.SNOOZE }
-      .each { notification ->
-        if (Instant.now().isAfter(notification.responseTime?.plusSeconds(SNOOZE_SECONDS))) {
-          resendNotification(
-            patientMetadataRepository.findByPatientId(notification.patientId),
-            patientPrescriptionRepository.findTopById(notification.prescriptionId),
-            notification
-          )
-        }
-      }
-
-    def notificationsByPatientId = notifications
-      .groupBy { notification -> notification.patientId }
-
-    notificationsByPatientId.keySet().each { patientId ->
-      log.info('Calculating Score for Patient ' + patientId)
-      def patientScore = BigDecimal.ZERO
-        notificationsByPatientId[patientId]
-        .toSorted { a, b -> a.responseTime <=> b.responseTime }
-        .withIndex()
-        .each { notificationAndIndex ->
-          def weight = (notificationsByPatientId[patientId].size() - (notificationAndIndex.second + 1)) / notificationsByPatientId[patientId].size()
-          switch (notificationAndIndex.first.response) {
-            case RESPONSE.YES:
-              patientScore = patientScore + weight * BigDecimal.valueOf(10)
-              break
-            case RESPONSE.IGNORE:
-              patientScore = patientScore + weight * BigDecimal.valueOf(-10)
-              break
+        .findAll { it.response == RESPONSE.SNOOZE }
+        .each { notification ->
+          if (Instant.now().isAfter(notification.responseTime?.plusSeconds(SNOOZE_SECONDS))) {
+            resendNotification(
+                patientMetadataRepository.findByPatientId(notification.patientId),
+                patientPrescriptionRepository.findTopById(notification.prescriptionId),
+                notification
+            )
           }
         }
+
+    // Handle individual adherence score
+    def notificationsByPrescriptionId = notifications
+        .groupBy { notification -> notification.prescriptionId }
+    notificationsByPrescriptionId.keySet().each { prescriptionId ->
+      def prescriptionNotifications = notificationsByPrescriptionId[prescriptionId]
+      Integer prescriptionScore = 0
+      prescriptionNotifications.each { notification ->
+        prescriptionScore += notification?.response ? 1 : 0
+      }
+
+      prescriptionScore = ((prescriptionScore / prescriptionNotifications.size()) * 100).toInteger()
+      def prescription = patientPrescriptionRepository.findById(prescriptionId).orElse(null)
+      if (prescription) {
+        prescription.adherence = prescriptionScore
+        patientPrescriptionRepository.save(prescription)
+      } else {
+        log.warn("Cannot find prescription for adherence scoring")
+      }
+    }
+
+    // Handle overall patient adherence score
+    def notificationsByPatientId = notifications
+        .groupBy { notification -> notification.patientId }
+
+    log.info('Calculating Scores for Patients')
+    notificationsByPatientId.keySet().each { patientId ->
+      Integer patientScore = 0
+      notificationsByPatientId[patientId]
+          .toSorted { a, b -> a.responseTime <=> b.responseTime }
+          .withIndex()
+          .each { notificationAndIndex ->
+            def weight = (notificationsByPatientId[patientId].size() - (notificationAndIndex.second + 1)) / notificationsByPatientId[patientId].size()
+            switch (notificationAndIndex.first.response) {
+              case RESPONSE.YES:
+                patientScore = (patientScore + weight * BigDecimal.valueOf(10)).toInteger()
+                break
+              case RESPONSE.IGNORE:
+                patientScore = (patientScore + weight * BigDecimal.valueOf(-10)).toInteger()
+                break
+            }
+          }
       patientScore = patientScore * 1000 // We aren't certain why this conversion factor is required, but it seems to be
-      patientService.updatePatientPrescriptionAdherenceScore(patientId, normalizeScore(patientScore.floatValue(), 0f, 100f).toInteger())
+      patientService.updatePatientPrescriptionAdherenceScore(patientId, normalizeScore(patientScore.floatValue(), 0f, 100f))
     }
 
     log.info('Evaluating new notifications')
@@ -171,9 +193,8 @@ class NotificationService {
       }
   }
 
-  private static Float normalizeScore(Float score, Float min, Float max) {
-    def a = ((score - min) / (max - min))
-    return a.toFloat()
+  private static Integer normalizeScore(Float score, Float min, Float max) {
+    ((score - min) / (max - min)).toInteger()
   }
 }
 
