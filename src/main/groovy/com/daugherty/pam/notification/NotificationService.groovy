@@ -108,16 +108,16 @@ class NotificationService {
             def latestNotification = findLatestNotification(prescription.patient_id, prescription.id)
             if (!latestNotification) {
               sendNewNotification(patientMetadata, prescription)
-            } else if(latestNotification.response != RESPONSE.YES && latestNotification.response != RESPONSE.IGNORE) {
+            } else {
               switch (prescription.interval) {
                 case PRESCRIPTION_INTERVAL.DAILY:
                   if (latestNotification.lastNotificationTime.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))) {
-                    resendNotification(patientMetadata, prescription, latestNotification)
+                    sendNewNotification(patientMetadata, prescription)
                   }
                   break
                 case PRESCRIPTION_INTERVAL.TWICE_DAILY:
                   if (latestNotification.lastNotificationTime.isBefore(Instant.now().minus(12, ChronoUnit.HOURS))) {
-                    resendNotification(patientMetadata, prescription, latestNotification)
+                    sendNewNotification(patientMetadata, prescription)
                   }
                   break
                 case PRESCRIPTION_INTERVAL.AS_NEEDED:
