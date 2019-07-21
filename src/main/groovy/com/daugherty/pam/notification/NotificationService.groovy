@@ -7,6 +7,7 @@ import com.daugherty.pam.patient.*
 import com.notnoop.apns.APNS
 import com.notnoop.apns.ApnsService
 import groovy.transform.CompileStatic
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.env.Environment
 import org.springframework.core.io.ClassPathResource
@@ -17,6 +18,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 @CompileStatic
+@Slf4j
 @Service
 class NotificationService {
   private final EmrService emrService
@@ -88,18 +90,20 @@ class NotificationService {
 
   @Scheduled(fixedRateString = '60000')
   void evaluateNotifications() {
+    log.info('Evaluating snoozed notifications')
     patientNotificationRepository.findAll()
-        .findAll { it.response = RESPONSE.SNOOZE }
-        .each {
-          if (it.responseTime?.plusSeconds(SNOOZE_SECONDS)?.isAfter(Instant.now())) {
+        .findAll { it.response == RESPONSE.SNOOZE }
+        .each { notification ->
+          if (Instant.now().isAfter(notification.responseTime?.plusSeconds(SNOOZE_SECONDS))) {
             resendNotification(
-                patientMetadataRepository.findByPatientId(it.patientId),
-                patientPrescriptionRepository.findTopById(it.prescriptionId),
-                it
+                patientMetadataRepository.findByPatientId(notification.patientId),
+                patientPrescriptionRepository.findTopById(notification.prescriptionId),
+                notification
             )
           }
         }
 
+    log.info('Evaluating new notifications')
     patientPrescriptionRepository
         .findAll()
         .each { prescription ->
