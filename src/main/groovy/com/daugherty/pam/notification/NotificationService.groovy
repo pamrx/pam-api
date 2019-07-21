@@ -2,10 +2,7 @@ package com.daugherty.pam.notification
 
 import com.daugherty.pam.emr.EmrService
 import com.daugherty.pam.exception.ERROR_CODE
-import com.daugherty.pam.patient.PatientMetadata
-import com.daugherty.pam.patient.PatientMetadataRepository
-import com.daugherty.pam.patient.PatientPrescription
-import com.daugherty.pam.patient.PatientPrescriptionRepository
+import com.daugherty.pam.patient.*
 import com.notnoop.apns.APNS
 import com.notnoop.apns.ApnsService
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,6 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 @Service
 class NotificationService {
@@ -87,16 +85,27 @@ class NotificationService {
       if (it.responseTime?.plusSeconds(SNOOZE_SECONDS)?.isAfter(Instant.now())) {
         sendNotification(
             patientMetadataRepository.findByPatientId(it.patientId),
-            patientPrescriptionRepository.findByPrescriptionId(it.prescriptionId)
+            patientPrescriptionRepository.findB(it.prescriptionId)
         )
       }
     }
     // handle new notifications
     // TODO
-    patientPrescriptionRepository.findAll()
-        .each {
+    patientPrescriptionRepository.findAll().each {
       def patientId = it.patientId
-      it.start_date
+      def latestNotification = findLatestNotification(it.patient_id, it.id)
+      switch (it.interval) {
+        case PRESCRIPTION_INTERVAL.DAILY:
+          if (latestNotification.initialNotificationTime.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))) {
+            sendNotification(patientMetadataRepository.findByPatientId(it.patient_id), it)
+          }
+          break
+        case PRESCRIPTION_INTERVAL.TWICE_DAILY:
+          if (latestNotification.initialNotificationTime.isBefore(Instant.now().minus(12, ChronoUnit.HOURS))) {
+            sendNotification(patientMetadataRepository.findByPatientId(it.patient_id), it)
+          }
+          break
+      }
     }
   }
 }
