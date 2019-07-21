@@ -24,4 +24,5 @@ class PatientPrescription {
   PRESCRIPTION_INTERVAL interval // how often to take med (daily, as-needed, etc)
   String refills // number - how many refills
   String per_refill // number - quantity per refill
+  String filled_date
 }
