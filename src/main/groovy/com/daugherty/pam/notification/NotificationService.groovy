@@ -2,9 +2,11 @@ package com.daugherty.pam.notification
 
 import com.daugherty.pam.emr.EmrService
 import com.daugherty.pam.exception.ERROR_CODE
+import com.daugherty.pam.exception.PamException
 import com.daugherty.pam.patient.*
 import com.notnoop.apns.APNS
 import com.notnoop.apns.ApnsService
+import groovy.transform.CompileStatic
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.env.Environment
 import org.springframework.core.io.ClassPathResource
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
+@CompileStatic
 @Service
 class NotificationService {
   private final EmrService emrService
@@ -36,17 +39,25 @@ class NotificationService {
   }
 
   PatientNotification findLatestNotification(String patientId, String prescriptionId) {
-    patientNotificationRepository.findTopByPatientIdAndPrescriptionId(patientId, prescriptionId)
+    patientNotificationRepository.findTopByPatientIdAndPrescriptionIdOrderByLastNotificationTime(patientId, prescriptionId)
   }
 
-  PatientNotification sendNotification(PatientMetadata patientMetadata, PatientPrescription patientPrescription) {
+  PatientNotification resendNotification(PatientMetadata patientMetadata, PatientPrescription patientPrescription, PatientNotification previousNotification) {
+    def medicationName = patientPrescription.drug.split(" ").first()
+    previousNotification.lastNotificationTime = Instant.now()
+    push(patientMetadata, previousNotification.id, "PAM Reminder", "Have you taken your ${medicationName} today?")
+    patientNotificationRepository.save(previousNotification)
+  }
+
+  PatientNotification sendNewNotification(PatientMetadata patientMetadata, PatientPrescription patientPrescription) {
     def medicationName = patientPrescription.drug.split(" ").first()
     def notification = new PatientNotification(
-      patientId: patientMetadata.patientId,
-      prescriptionId: patientPrescription.id,
-      initialNotificationTime: Instant.now()
+        patientId: patientMetadata.patientId,
+        prescriptionId: patientPrescription.id,
+        initialNotificationTime: Instant.now(),
+        lastNotificationTime: Instant.now()
     )
-    def savedNotification = patientNotificationRepository.save(notification)
+    def savedNotification = patientNotificationRepository.insert(notification)
     push(patientMetadata, savedNotification.id, "PAM Reminder", "Have you taken your ${medicationName} today?")
     savedNotification
   }
@@ -55,9 +66,9 @@ class NotificationService {
     try {
       InputStream inputStream = new ClassPathResource("pushcert.p12").getInputStream()
       ApnsService service = APNS.newService().withCert(inputStream, env.getProperty('pam.notification.password'))
-        .withSandboxDestination().build()
+          .withSandboxDestination().build()
       String payload = APNS.newPayload().alertTitle(title).alertBody(message).category('confirm')
-        .customField('notificationId', notificationId).build()
+          .customField('notificationId', notificationId).build()
       service.push(patientMetadata.notificationToken, payload)
     } catch (IOException e) {
       e.printStackTrace()
@@ -65,49 +76,56 @@ class NotificationService {
   }
 
   PatientNotification updateNotificationResponse(String notificationId, RESPONSE response) {
-    def optionalNotification = patientNotificationRepository.findById(notificationId)
-    if (optionalNotification.isPresent()) {
-      def notification = optionalNotification.get()
+    def notification = patientNotificationRepository.findById(notificationId).orElse(null)
+    if (notification) {
       notification.response = response
       notification.responseTime = Instant.now()
       return patientNotificationRepository.save(notification)
     } else {
-      throw PamException(ERROR_CODE.NOT_FOUND)
+      throw new PamException(ERROR_CODE.NOT_FOUND)
     }
   }
 
   @Scheduled(fixedRateString = '60000')
   void evaluateNotifications() {
     patientNotificationRepository.findAll()
-      .findAll { it.response = RESPONSE.SNOOZE }
-      .each {
-        if (it.responseTime?.plusSeconds(SNOOZE_SECONDS)?.isAfter(Instant.now())) {
-          sendNotification(
-            patientMetadataRepository.findByPatientId(it.patientId),
-            patientPrescriptionRepository.findTopById(it.prescriptionId)
-          )
+        .findAll { it.response = RESPONSE.SNOOZE }
+        .each {
+          if (it.responseTime?.plusSeconds(SNOOZE_SECONDS)?.isAfter(Instant.now())) {
+            resendNotification(
+                patientMetadataRepository.findByPatientId(it.patientId),
+                patientPrescriptionRepository.findTopById(it.prescriptionId),
+                it
+            )
+          }
         }
-      }
 
     patientPrescriptionRepository
-      .findAll()
-      .each {
-        def latestNotification = findLatestNotification(it.patient_id, it.id)
-        switch (it.interval) {
-          case PRESCRIPTION_INTERVAL.DAILY:
-            if (latestNotification.initialNotificationTime.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))) {
-              sendNotification(patientMetadataRepository.findByPatientId(it.patient_id), it)
+        .findAll()
+        .each { prescription ->
+          def patientMetadata = patientMetadataRepository.findByPatientId(prescription.patient_id)
+          if (patientMetadata?.notificationToken) { //only evaluate patients with logins
+            def latestNotification = findLatestNotification(prescription.patient_id, prescription.id)
+            if (!latestNotification) {
+              sendNewNotification(patientMetadata, prescription)
+            } else if(latestNotification.response != RESPONSE.YES && latestNotification.response != RESPONSE.IGNORE) {
+              switch (prescription.interval) {
+                case PRESCRIPTION_INTERVAL.DAILY:
+                  if (latestNotification.lastNotificationTime.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))) {
+                    resendNotification(patientMetadata, prescription, latestNotification)
+                  }
+                  break
+                case PRESCRIPTION_INTERVAL.TWICE_DAILY:
+                  if (latestNotification.lastNotificationTime.isBefore(Instant.now().minus(12, ChronoUnit.HOURS))) {
+                    resendNotification(patientMetadata, prescription, latestNotification)
+                  }
+                  break
+                case PRESCRIPTION_INTERVAL.AS_NEEDED:
+                  // At  this time we have decided not to notify for this interval
+                  break
+              }
             }
-            break
-          case PRESCRIPTION_INTERVAL.TWICE_DAILY:
-            if (latestNotification.initialNotificationTime.isBefore(Instant.now().minus(12, ChronoUnit.HOURS))) {
-              sendNotification(patientMetadataRepository.findByPatientId(it.patient_id), it)
-            }
-            break
-          case PRESCRIPTION_INTERVAL.AS_NEEDED:
-            // At  this time we have decided not to notify for this interval
-            break
+          }
         }
-      }
   }
 }

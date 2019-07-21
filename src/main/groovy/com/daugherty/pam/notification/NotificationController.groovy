@@ -28,13 +28,13 @@ class NotificationController {
   ResponseEntity<PatientNotification> sendNotification(@PathVariable String patientId, @PathVariable String prescriptionId) {
     def patientMetadata = patientService.getPatientMetadataByPatientId(patientId)
     def patientPrescription = patientService.getPatientPrescriptionByPrescriptionId(prescriptionId)
-    def notification = notificationService.sendNotification(patientMetadata, patientPrescription)
+    def notification = notificationService.sendNewNotification(patientMetadata, patientPrescription)
     ResponseEntity.ok(notification)
   }
 
   @PostMapping('/notifications/{notificationId}')
   ResponseEntity<PatientNotification> yesResponse(@PathVariable String notificationId, @RequestBody RESPONSE response) {
     def notification = notificationService.updateNotificationResponse(notificationId, response)
-    ResponseEntity.ok().body(notification)
+    ResponseEntity.ok(notification)
   }
 }

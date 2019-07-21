@@ -4,6 +4,8 @@ import com.daugherty.pam.emr.EmrService
 import com.daugherty.pam.exception.ERROR_CODE
 import com.daugherty.pam.exception.PamException
 import groovy.transform.CompileStatic
+import org.springframework.http.HttpHeaders
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 
 @Service
@@ -18,6 +20,21 @@ class PatientService {
     this.emrService = emrService
     this.patientPrescriptionRepository = patientPrescriptionRepository
     this.patientMetadataRepository = patientMetadataRepository
+  }
+
+  @Scheduled(fixedRateString = '10000')
+  void syncPatientPrescriptions() {
+    getPatients().each { patient ->
+      evaluatePatientPrescriptions(patient)
+    }
+  }
+
+  void evaluatePatientPrescriptions(Patient patient) {
+    emrService.getPrescriptionsForPatient(patient.pid).each { prescription ->
+      if (!getPatientPrescriptionByPrescriptionId(prescription.id)) {
+        storePatientPrescription(prescription)
+      }
+    }
   }
 
   List<Patient> getPatients() {
@@ -40,7 +57,7 @@ class PatientService {
   // TODO: BRAD CALL THIS!
   Patient updatePatientPrescriptionAdherenceScore(String patientId, Float score) {
     def patient = emrService.getPatientById(patientId)
-    if(!patient) {
+    if (!patient) {
       throw new PamException(ERROR_CODE.NOT_FOUND)
     }
 
@@ -55,6 +72,10 @@ class PatientService {
 
   PatientPrescription getPatientPrescriptionByPrescriptionId(String prescriptionId) {
     patientPrescriptionRepository.findById(prescriptionId).orElse(null)
+  }
+
+  void storePatientPrescription(PatientPrescription prescription) {
+    patientPrescriptionRepository.insert(prescription)
   }
 
   List<PatientPrescription> getPatientPrescriptions(String patientId) {

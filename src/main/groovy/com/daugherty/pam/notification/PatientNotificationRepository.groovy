@@ -10,5 +10,5 @@ import org.springframework.stereotype.Repository
 @Repository
 @RepositoryRestResource(exported = false)
 interface PatientNotificationRepository extends MongoRepository<PatientNotification, String> {
-  PatientNotification findTopByPatientIdAndPrescriptionId(String patientId, String prescriptionId)
+  PatientNotification findTopByPatientIdAndPrescriptionIdOrderByLastNotificationTime(String patientId, String prescriptionId)
 }

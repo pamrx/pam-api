@@ -10,6 +10,8 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.ResponseEntity
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestTemplate
 
 import javax.annotation.PostConstruct
@@ -37,12 +39,10 @@ class EmrService {
     emrToken = restTemplate.postForEntity('http://159.65.225.138/apis/api/auth', body, Object)
   }
 
-  @Scheduled(fixedRateString = '10000')
+  @Scheduled(fixedDelayString = '10000')
   void syncPatientPrescriptions() {
     def headers = new HttpHeaders()
     headers.setBearerAuth(emrToken.body.get('access_token'))
-    def patients = getPatients()
-    //patientService.sync(patients)
   }
 
   List<Patient> getPatients() {
@@ -63,8 +63,14 @@ class EmrService {
   List<PatientPrescription> getPrescriptionsForPatient(String patientId) {
     def headers = new HttpHeaders()
     headers.setBearerAuth(emrToken.body.get('access_token'))
-    restTemplate.exchange("http://159.65.225.138/apis/api/patient/${patientId}/prescription", HttpMethod.GET,
-        new HttpEntity<String>(headers), PatientPrescription[]).getBody()
+    log.info("Getting prescription info for patient ${patientId}")
+    try {
+      restTemplate.exchange("http://159.65.225.138/apis/api/patient/${patientId}/prescription", HttpMethod.GET,
+          new HttpEntity<String>(headers), PatientPrescription[]).body as List<PatientPrescription>
+    } catch (HttpClientErrorException e) {
+      log.warn("Exception caught getting prescriptions for patient ${patientId}")
+      return []
+    }
   }
 
   void addPrescriptionToPatient(String patientId, PatientPrescription prescription) {
