@@ -36,11 +36,15 @@ class PatientService {
   }
 
   PatientPrescription getPatientPrescriptionFromPrescriptionId(String prescriptionId) {
-    patientPrescriptionRepository.findByPrescriptionId(prescriptionId)
+    patientPrescriptionRepository.findById(prescriptionId).orElse(null)
   }
 
-  void addPrescriptionToPatient(String id, PatientPrescription prescription) {
+  List<PatientPrescription> getPatientPrescriptions(String patientId) {
+    emrService.getPrescriptionsForPatient(patientId)
+  }
 
+  void addPrescriptionToPatient(String patientId, PatientPrescription prescription) {
+    emrService.addPrescriptionToPatient(patientId, prescription)
   }
 
   void addNotificationTokenToPatient(String id, String token) {

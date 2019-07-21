@@ -9,5 +9,4 @@ import org.springframework.stereotype.Repository
 @Repository
 @RepositoryRestResource(exported = false)
 interface PatientPrescriptionRepository extends MongoRepository<PatientPrescription, String> {
-  PatientPrescription findByPrescriptionId(String prescriptionId)
 }

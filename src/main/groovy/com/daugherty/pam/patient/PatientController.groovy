@@ -3,6 +3,7 @@ package com.daugherty.pam.patient
 import com.daugherty.pam.exception.PamException
 import com.daugherty.pam.notification.NotificationService
 import groovy.util.logging.Slf4j
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -46,11 +47,18 @@ class PatientController {
 
   @PostMapping('/patients/{patientId}/prescriptions')
   ResponseEntity addPrescriptionToPatient(@PathVariable String patientId, @RequestBody PatientPrescription prescription) {
-    patientService.addPrescriptiontoPatient(patientId, prescription)
+    patientService.addPrescriptionToPatient(patientId, prescription)
+    ResponseEntity.status(HttpStatus.CREATED).build()
+  }
+
+  @GetMapping('/patients/{patientId}/prescriptions')
+  ResponseEntity<List<PatientPrescription>> getPrescriptionsForPatient(@PathVariable String patientId) {
+    ResponseEntity.ok(patientService.getPatientPrescriptions(patientId))
   }
 
   @PostMapping('/patients/{patientId}/notificationToken')
   ResponseEntity addNotificationTokenToPatient(@PathVariable String patientId, @RequestBody String notificationToken) {
     patientService.addNotificationTokenToPatient(patientId, notificationToken)
+    ResponseEntity.status(HttpStatus.CREATED).build()
   }
 }

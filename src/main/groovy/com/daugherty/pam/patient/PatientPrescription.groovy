@@ -11,13 +11,17 @@ import org.springframework.data.mongodb.core.mapping.Document
 @EqualsAndHashCode
 @Document(collection = 'patient_prescriptions')
 class PatientPrescription {
-  @Id
   String id
-  String patientId
-  String prescriptionId
-  String dosage
-  Integer frequency
-  FREQUENCY_UNIT frequencyUnit
-  String doses
-  String drug
+  String patient_id
+  String start_date //yyyy-mm-dd
+  String drug // name of drug
+  PRESCRIPTION_FORM form // form of the drug (capsule, pill, puff, etc)
+  String dosage // number - how many per
+  String quantity //number - how many per initial/refill
+  String size // number - how many of unit (e.g. 100 mg)
+  PRESCRIPTION_UNIT unit // number - code for unit of measure (mg, mcg, etc)
+  PRESCRIPTION_ROUTE route // number - code for how to take medication (orally, applied to affected area, etc)
+  PRESCRIPTION_INTERVAL interval // how often to take med (daily, as-needed, etc)
+  String refills // number - how many refills
+  String per_refill // number - quantity per refill
 }

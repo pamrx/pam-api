@@ -2,7 +2,9 @@ package com.daugherty.pam.emr
 
 
 import com.daugherty.pam.patient.Patient
+import com.daugherty.pam.patient.PatientPrescription
 import com.daugherty.pam.patient.PatientService
+import groovy.util.logging.Slf4j
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
@@ -14,6 +16,7 @@ import org.springframework.web.client.RestTemplate
 import javax.annotation.PostConstruct
 
 @Service
+@Slf4j
 class EmrService {
   private final RestTemplate restTemplate
   private final PatientService patientService
@@ -59,4 +62,17 @@ class EmrService {
   }
 
 
+  List<PatientPrescription> getPrescriptionsForPatient(String patientId) {
+    def headers = new HttpHeaders()
+    headers.setBearerAuth(emrToken.body.get('access_token'))
+    restTemplate.exchange("http://159.65.225.138/apis/api/patient/${patientId}/prescription", HttpMethod.GET,
+        new HttpEntity<String>(headers), PatientPrescription[]).getBody()
+  }
+
+  void addPrescriptionToPatient(String patientId, PatientPrescription prescription) {
+    def headers = new HttpHeaders()
+    headers.setBearerAuth(emrToken.body.get('access_token'))
+    log.info(prescription.toString())
+    restTemplate.exchange("http://159.65.225.138/apis/api/patient/${patientId}/prescription", HttpMethod.POST, new HttpEntity<PatientPrescription>(prescription, headers), PatientPrescription)
+  }
 }
