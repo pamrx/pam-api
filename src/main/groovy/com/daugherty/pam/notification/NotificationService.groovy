@@ -44,7 +44,7 @@ class NotificationService {
   }
 
   PatientNotification findLatestNotification(String patientId, String prescriptionId) {
-    patientNotificationRepository.findTopByPatientIdAndPrescriptionIdOrderByLastNotificationTime(patientId, prescriptionId)
+    patientNotificationRepository.findTopByPatientIdAndPrescriptionIdOrderByLastNotificationTimeDesc(patientId, prescriptionId)
   }
 
   PatientNotification resendNotification(PatientMetadata patientMetadata, PatientPrescription patientPrescription, PatientNotification previousNotification) {
@@ -109,6 +109,7 @@ class NotificationService {
         }
 
     // Handle individual adherence score
+    notifications = patientNotificationRepository.findAll()
     log.info('Calculating Scores and times taken today for Prescriptions')
     def localNow = Instant.now().atOffset(ZoneOffset.UTC).toLocalDate()
     def notificationsByPrescriptionId = notifications
@@ -139,28 +140,31 @@ class NotificationService {
     }
 
     // Handle overall patient adherence score
+    notifications = patientNotificationRepository.findAll()
     def notificationsByPatientId = notifications
         .groupBy { notification -> notification.patientId }
 
     log.info('Calculating Scores for Patients')
     notificationsByPatientId.keySet().each { patientId ->
       Integer patientScore = 0
-      notificationsByPatientId[patientId]
+      def patientNotifications = notificationsByPatientId[patientId]
+      patientNotifications
           .toSorted { a, b -> a.responseTime <=> b.responseTime }
           .withIndex()
           .each { notificationAndIndex ->
             def weight = (notificationsByPatientId[patientId].size() - (notificationAndIndex.second + 1)) / notificationsByPatientId[patientId].size()
             switch (notificationAndIndex.first.response) {
               case RESPONSE.YES:
-                patientScore = (patientScore + weight * BigDecimal.valueOf(10)).toInteger()
+                patientScore = (patientScore + (weight * 10)).toInteger()
                 break
               case RESPONSE.IGNORE:
-                patientScore = (patientScore + weight * BigDecimal.valueOf(-10)).toInteger()
+                patientScore = (patientScore + (weight * -10)).toInteger()
                 break
             }
           }
-      patientScore = patientScore * 1000 // We aren't certain why this conversion factor is required, but it seems to be
-      patientService.updatePatientPrescriptionAdherenceScore(patientId, normalizeScore(patientScore.floatValue(), 0f, 100f))
+      patientScore = normalizeScore(patientScore, 0, 100) * 1000 // We aren't certain why this conversion factor is required, but it seems to be
+      log.info("Patient ${patientId} Score: ${patientScore}")
+      patientService.updatePatientPrescriptionAdherenceScore(patientId, patientScore)
     }
 
     log.info('Evaluating new notifications')
@@ -204,7 +208,7 @@ class NotificationService {
       }
   }
 
-  private static Integer normalizeScore(Float score, Float min, Float max) {
+  private static Integer normalizeScore(Integer score, Integer min, Integer max) {
     ((score - min) / (max - min)).toInteger()
   }
 }
