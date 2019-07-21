@@ -53,8 +53,7 @@ class NotificationService {
     patientNotificationRepository.save(previousNotification)
   }
 
-  PatientNotification sendNewNotification(PatientMetadata patientMetadata, PatientPrescription patientPrescription) {
-    def medicationName = patientPrescription.drug.split(" ").first()
+  PatientNotification sendNewNotification(PatientMetadata patientMetadata, PatientPrescription patientPrescription, String message) {
     def notification = new PatientNotification(
       patientId: patientMetadata.patientId,
       prescriptionId: patientPrescription.id,
@@ -62,7 +61,7 @@ class NotificationService {
       lastNotificationTime: Instant.now()
     )
     def savedNotification = patientNotificationRepository.insert(notification)
-    push(patientMetadata, savedNotification.id, "PAM Reminder", "Have you taken your ${medicationName} today?")
+    push(patientMetadata, savedNotification.id, "PAM Reminder", message)
     savedNotification
   }
 
@@ -138,18 +137,29 @@ class NotificationService {
         def patientMetadata = patientMetadataRepository.findByPatientId(prescription.patient_id)
         if (patientMetadata?.notificationToken) { //only evaluate patients with logins
           def latestNotification = findLatestNotification(prescription.patient_id, prescription.id)
+          def medicationName = prescription.drug.split(" ").first()
           if (!latestNotification) {
-            sendNewNotification(patientMetadata, prescription)
+            switch (prescription.interval) {
+              case PRESCRIPTION_INTERVAL.DAILY:
+                sendNewNotification(patientMetadata, prescription, "Have you taken your ${medicationName} today?")
+                break
+              case PRESCRIPTION_INTERVAL.TWICE_DAILY:
+                sendNewNotification(patientMetadata, prescription, "Have you taken your first ${medicationName} today?")
+                break
+              case PRESCRIPTION_INTERVAL.AS_NEEDED:
+                // At  this time we have decided not to notify for this interval
+                break
+            }
           } else {
             switch (prescription.interval) {
               case PRESCRIPTION_INTERVAL.DAILY:
                 if (latestNotification.lastNotificationTime.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))) {
-                  sendNewNotification(patientMetadata, prescription)
+                  sendNewNotification(patientMetadata, prescription, "Have you taken your ${medicationName} today?")
                 }
                 break
               case PRESCRIPTION_INTERVAL.TWICE_DAILY:
                 if (latestNotification.lastNotificationTime.isBefore(Instant.now().minus(12, ChronoUnit.HOURS))) {
-                  sendNewNotification(patientMetadata, prescription)
+                  sendNewNotification(patientMetadata, prescription, "Have you taken your next ${medicationName}?")
                 }
                 break
               case PRESCRIPTION_INTERVAL.AS_NEEDED:

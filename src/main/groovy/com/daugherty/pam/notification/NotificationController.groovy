@@ -28,7 +28,7 @@ class NotificationController {
   ResponseEntity<PatientNotification> sendNotification(@PathVariable String patientId, @PathVariable String prescriptionId) {
     def patientMetadata = patientService.getPatientMetadataByPatientId(patientId)
     def patientPrescription = patientService.getPatientPrescriptionByPrescriptionId(prescriptionId)
-    def notification = notificationService.sendNewNotification(patientMetadata, patientPrescription)
+    def notification = notificationService.sendNewNotification(patientMetadata, patientPrescription, "Have you taken your medication today?")
     ResponseEntity.ok(notification)
   }
 
