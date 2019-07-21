@@ -149,20 +149,17 @@ class NotificationService {
       Integer patientScore = 0
       def patientNotifications = notificationsByPatientId[patientId]
       patientNotifications
-          .toSorted { a, b -> a.responseTime <=> b.responseTime }
-          .withIndex()
-          .each { notificationAndIndex ->
-            def weight = (notificationsByPatientId[patientId].size() - (notificationAndIndex.second + 1)) / notificationsByPatientId[patientId].size()
-            switch (notificationAndIndex.first.response) {
+          // .toSorted { a, b -> a.responseTime <=> b.responseTime }
+          //.withIndex()
+          .each { notification ->
+            //def weight = (notificationsByPatientId[patientId].size() - (notificationAndIndex.second + 1)) / notificationsByPatientId[patientId].size()
+            switch (notification.response) {
               case RESPONSE.YES:
-                patientScore = (patientScore + (weight * 10)).toInteger()
-                break
-              case RESPONSE.IGNORE:
-                patientScore = (patientScore + (weight * -10)).toInteger()
+                patientScore += 1
                 break
             }
           }
-      patientScore = normalizeScore(patientScore, 0, 100) * 1000 // We aren't certain why this conversion factor is required, but it seems to be
+      patientScore = normalizeScore(patientScore, 0, patientNotifications.size()) * 100 // We aren't certain why this conversion factor is required, but it seems to be
       log.info("Patient ${patientId} Score: ${patientScore}")
       patientService.updatePatientPrescriptionAdherenceScore(patientId, patientScore)
     }
