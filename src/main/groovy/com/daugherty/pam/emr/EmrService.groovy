@@ -1,6 +1,5 @@
 package com.daugherty.pam.emr
 
-
 import com.daugherty.pam.patient.Patient
 import com.daugherty.pam.patient.PatientPrescription
 import com.daugherty.pam.patient.PatientService
