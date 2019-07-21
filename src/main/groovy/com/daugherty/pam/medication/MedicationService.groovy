@@ -7,9 +7,11 @@ import org.springframework.stereotype.Service
 @Service
 class MedicationService {
   private final EmrService emrService
+  private final MedicationRepository medicationRepository
 
-  MedicationService(final EmrService emrService) {
+  MedicationService(final EmrService emrService, final MedicationRepository medicationRepository) {
     this.emrService = emrService
+    this.medicationRepository = medicationRepository
   }
 
   List<Medication> getMedications() {

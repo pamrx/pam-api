@@ -25,15 +25,16 @@ class NotificationController {
   }
 
   @PostMapping('/notify/{patientId}/{prescriptionId}')
-  ResponseEntity sendNotification(@PathVariable String patientId, @PathVariable String prescriptionId) {
+  ResponseEntity<PatientNotification> sendNotification(@PathVariable String patientId, @PathVariable String prescriptionId) {
     def patientMetadata = patientService.getPatientMetadataByPatientId(patientId)
     def patientPrescription = patientService.getPatientPrescriptionFromPrescriptionId(prescriptionId)
-    notificationService.sendNotification(patientMetadata, patientPrescription)
-    ResponseEntity.ok().body('Notification sent')
+    def notification = notificationService.sendNotification(patientMetadata, patientPrescription)
+    ResponseEntity.ok(notification)
   }
 
   @PostMapping('/notifications/{notificationId}')
-  ResponseEntity yesResponse(@PathVariable String notificationId, @RequestBody RESPONSE response) {
-    notificationService.updateNotificationResponse(notificationId, response)
+  ResponseEntity<PatientNotification> yesResponse(@PathVariable String notificationId, @RequestBody RESPONSE response) {
+    def notification = notificationService.updateNotificationResponse(notificationId, response)
+    ResponseEntity.ok().body(notification)
   }
 }
