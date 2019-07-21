@@ -41,7 +41,7 @@ class NotificationService {
     def medicationName = patientPrescription.drug.split(" ").first()
     def notification = new PatientNotification(
         patientId: patientMetadata.patientId,
-        prescriptionId: patientPrescription.prescriptionId,
+        prescriptionId: patientPrescription.id,
         initialNotificationTime: Instant.now()
     )
     def savedNotification = patientNotificationRepository.save(notification)
@@ -83,7 +83,7 @@ class NotificationService {
       if (it.responseTime?.plusSeconds(SNOOZE_SECONDS)?.isAfter(Instant.now())) {
         sendNotification(
             patientMetadataRepository.findByPatientId(it.patientId),
-            patientPrescriptionRepository.findByPrescriptionId(it.prescriptionId)
+            patientPrescriptionRepository.findById(it.id).orElse(null)
         )
       }
     }
